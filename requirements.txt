@@ -3,3 +3,6 @@ gunicorn
 uvicorn
 jinja2
 pytest
+requests
+httpx
+pre-commit
