@@ -5,11 +5,14 @@ from .. import models, schemas, utils
 from ..database import get_db
 from typing import List, Optional
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/posts",
+    tags=["Posts"]
+)
 
 #List typing for the return
-@router.get("/posts", response_model= List[schemas.Post])
-def test(db: Session = Depends(get_db)):
+@router.get("/", response_model= List[schemas.Post])
+def get_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
     return posts
 
@@ -31,7 +34,7 @@ def test(db: Session = Depends(get_db)):
 #     print(post.dict())
 #     return {"post": f"data: {post}"}
 
-@router.post("/posts", status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
 def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     # print(post.published)
     # print(post)
@@ -65,7 +68,7 @@ def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
 #         if p["id"] == id:
 #             return p
 
-@router.get("/posts/{id}", response_model= schemas.Post)
+@router.get("/{id}", response_model= schemas.Post)
 def get_post(id: int, response: Response, db:Session = Depends(get_db)):
     # print(id, type(id))
     # post = find_post(id)
@@ -86,7 +89,7 @@ def find_index_post(id):
         if p["id"] == id:
             return i
 
-@router.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int, db:Session = Depends(get_db)):
     #deleting a post
     #find the index in the array that has required ID
@@ -123,7 +126,7 @@ def delete_post(id: int, db:Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.put("/posts/{id}", response_model= schemas.Post)
+@router.put("/{id}", response_model= schemas.Post)
 def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db)):
     # index = find_index_post(id)
     # if index == None:
