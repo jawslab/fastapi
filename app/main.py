@@ -1,12 +1,12 @@
 from typing import Optional
 from fastapi import Body, FastAPI, Response, status, HTTPException, Depends
-from pydantic import BaseModel
+
 from random import randrange
 # Note: the module name is psycopg, not psycopg3
 import psycopg2
 import time
 from sqlalchemy.orm import Session
-from . import models
+from . import models, schemas
 from .database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
@@ -15,12 +15,6 @@ app = FastAPI()
 
 
 
-#pydantic data model
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
-    # rating: Optional[int] = None
 
 my_posts = [
     {"title": "title of post 1", "content": "content of post 1", "id": 1},
@@ -41,7 +35,7 @@ async def root():
 
 @app.get("/posts")
 def test(db: Session = Depends(get_db)):
-    return {"status": "success", "data": db.query(models.Post).all()}
+    return {db.query(models.Post).all()}
 
 # @app.get("/posts")
 # def get_posts():
@@ -55,14 +49,14 @@ def test(db: Session = Depends(get_db)):
 #     return {"post": f"title: {payload['title']} content: {payload['content']}" }
 
 # @app.post("/createposts")
-# def create_posts(post: Post):
+# def create_posts(post: schemes.Post):
 #     print(post.published)
 #     print(post)
 #     print(post.dict())
 #     return {"post": f"data: {post}"}
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_posts(post: Post, db: Session = Depends(get_db)):
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     # print(post.published)
     # print(post)
     # print(post.dict())
@@ -83,17 +77,17 @@ def create_posts(post: Post, db: Session = Depends(get_db)):
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
-    return {"post": new_post}
+    return {new_post}
 
-#path parameter
-@app.get("/posts/latest")
-def get_latest_post():
-    return {"latest_post": my_posts[-1]}
+# #path parameter
+# @app.get("/posts/latest")
+# def get_latest_post():
+#     return {"latest_post": my_posts[-1]}
 
-def find_post(id):
-    for p in my_posts:
-        if p["id"] == id:
-            return p
+# def find_post(id):
+#     for p in my_posts:
+#         if p["id"] == id:
+#             return p
 
 @app.get("/posts/{id}")
 def get_post(id: int, response: Response, db:Session = Depends(get_db)):
@@ -109,7 +103,7 @@ def get_post(id: int, response: Response, db:Session = Depends(get_db)):
     post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} not found")
-    return {"post_details": post}
+    return {post}
 
 def find_index_post(id):
     for i, p in enumerate(my_posts):
@@ -154,7 +148,7 @@ def delete_post(id: int, db:Session = Depends(get_db)):
 
 
 @app.put("/posts/{id}")
-def update_post(id: int, post: Post, db: Session = Depends(get_db)):
+def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db)):
     # index = find_index_post(id)
     # if index == None:
     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} not found")
@@ -179,4 +173,4 @@ def update_post(id: int, post: Post, db: Session = Depends(get_db)):
     post_query.update(post.dict(), synchronize_session=False)
     db.commit()
 
-    return {"data": post}
+    return {post}
