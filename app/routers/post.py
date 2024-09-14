@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas, utils
 from ..database import get_db
 from typing import List, Optional
+from . import oauth2
 
 router = APIRouter(
     prefix="/posts",
@@ -35,7 +36,7 @@ def get_posts(db: Session = Depends(get_db)):
 #     return {"post": f"data: {post}"}
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
-def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), user_id: int = Depends(oauth2.get_current_user)):
     # print(post.published)
     # print(post)
     # print(post.dict())
@@ -49,7 +50,7 @@ def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, (post.title, post.content, (post.published)))
     # new_post = cursor.fetchone()
     # conn.commit()
-    
+    print(user_id)
     print(post)
     # new_post = models.Post(title=post.title, content=post.content, published=post.published)
     new_post = models.Post(**post.model_dump())
