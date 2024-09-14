@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from fastapi import Body, FastAPI, Response, status, HTTPException, Depends
 
 from random import randrange
@@ -33,9 +33,11 @@ except Exception as error:
 async def root():
     return {"message": "welcome to my api"}
 
-@app.get("/posts")
+#List typing for the return
+@app.get("/posts", response_model= List[schemas.Post])
 def test(db: Session = Depends(get_db)):
-    return {db.query(models.Post).all()}
+    posts = db.query(models.Post).all()
+    return posts
 
 # @app.get("/posts")
 # def get_posts():
@@ -55,7 +57,7 @@ def test(db: Session = Depends(get_db)):
 #     print(post.dict())
 #     return {"post": f"data: {post}"}
 
-@app.post("/posts", status_code=status.HTTP_201_CREATED)
+@app.post("/posts", status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
 def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     # print(post.published)
     # print(post)
@@ -77,7 +79,7 @@ def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
-    return {new_post}
+    return new_post
 
 # #path parameter
 # @app.get("/posts/latest")
@@ -89,7 +91,7 @@ def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
 #         if p["id"] == id:
 #             return p
 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model= schemas.Post)
 def get_post(id: int, response: Response, db:Session = Depends(get_db)):
     # print(id, type(id))
     # post = find_post(id)
@@ -103,7 +105,7 @@ def get_post(id: int, response: Response, db:Session = Depends(get_db)):
     post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} not found")
-    return {post}
+    return post
 
 def find_index_post(id):
     for i, p in enumerate(my_posts):
@@ -147,7 +149,7 @@ def delete_post(id: int, db:Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.put("/posts/{id}")
+@app.put("/posts/{id}", response_model= schemas.Post)
 def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db)):
     # index = find_index_post(id)
     # if index == None:
@@ -172,5 +174,5 @@ def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db)
 #   Use Pydantic models to handle validation and convert the data using .dict() for updates.
     post_query.update(post.dict(), synchronize_session=False)
     db.commit()
-
-    return {post}
+    new_post = post_query.first()
+    return new_post
