@@ -1,12 +1,19 @@
 from typing import Optional
-from fastapi import Body, FastAPI, Response, status, HTTPException
+from fastapi import Body, FastAPI, Response, status, HTTPException, Depends
 from pydantic import BaseModel
 from random import randrange
 # Note: the module name is psycopg, not psycopg3
-import psycopg
+import psycopg2
+import time
+from sqlalchemy.orm import Session
+from . import models
+from .database import engine, get_db
 
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+
 
 #pydantic data model
 class Post(BaseModel):
@@ -22,8 +29,8 @@ my_posts = [
 
 
 try:
-    conn = psycopg.connect(host='localhost', dbname='fastapi', user='postgres', password='aQbvvgL1ekDasXJ0Ntwg')
-    cursor = conn.cursor(row_factory=psycopg.rows.dict_row)
+    conn = psycopg2.connect(host='localhost', dbname='fastapi', user='postgres', password='aQbvvgL1ekDasXJ0Ntwg')
+    cursor = conn.cursor()
     print("Database connection was successful!")
 except Exception as error:
     print("Error connecting to database: ", error)
@@ -31,6 +38,10 @@ except Exception as error:
 @app.get("/")
 async def root():
     return {"message": "welcome to my api"}
+
+@app.get("/sqlalchemy")
+def test(db: Session = Depends(get_db)):
+    return {"status": "success", "data": db.query(models.Post).all()}
 
 @app.get("/posts")
 def get_posts():
