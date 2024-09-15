@@ -1,5 +1,7 @@
 from fastapi import Body, FastAPI, Response, status, HTTPException, Depends, APIRouter
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from .. import models, schemas, utils
 from ..database import get_db
@@ -12,10 +14,27 @@ router = APIRouter(
 )
 
 # #List typing for the return
-@router.get("/", response_model= List[schemas.Post])
+@router.get("/", response_model= List[schemas.PostOut])
 def get_posts(db: Session = Depends(get_db), limit: int = 5, skip: int =0, search: Optional[str] =""):
-    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
-    return posts
+    # posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+       # Convert posts to JSON format
+    # print("Posts (JSON):", jsonable_encoder(posts))  # This will print the posts in JSON format
+
+    results = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).\
+        join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).\
+        filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+#     print('Join', results)
+#  # Convert join results to JSON-serializable format and print
+#     serialized_results = [
+#         {
+#             "post": jsonable_encoder(result[0]),  # The Post object
+#             "votes": result[1]  # The vote count
+#         }
+#         for result in results
+#     ]
+#     print("Join Results (JSON):", serialized_results)
+
+    return results
 
 #List typing for the return
 @router.get("/myposts", response_model= List[schemas.Post])
