@@ -16,6 +16,7 @@ class Post(PostBase):
     # content: str
     # published: bool
     created_at: datetime
+    owner_id: int
     # rating: Optional[int] = None
     # ORM Sqlalchemy to Pydantic model to convert the data to a dictionary
     class Config:

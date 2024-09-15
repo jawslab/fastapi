@@ -11,10 +11,19 @@ router = APIRouter(
     tags=["Posts"]
 )
 
-#List typing for the return
+# #List typing for the return
 @router.get("/", response_model= List[schemas.Post])
 def get_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
+    return posts
+
+#List typing for the return
+@router.get("/myposts", response_model= List[schemas.Post])
+def get_posts(db: Session = Depends(get_db), login_user: int = Depends(oauth2.get_current_user)):
+    # print(login_user.id)
+    posts = db.query(models.Post).filter(models.Post.owner_id==login_user.id).all()
+    if not posts:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     return posts
 
 # @app.get("/posts")
@@ -24,40 +33,6 @@ def get_posts(db: Session = Depends(get_db)):
 #     print (posts)
 #     return {"data": posts}
 
-# @app.post("/createposts")
-# def create_posts(payload: dict = Body(...)):
-#     return {"post": f"title: {payload['title']} content: {payload['content']}" }
-
-# @app.post("/createposts")
-# def create_posts(post: schemes.Post):
-#     print(post.published)
-#     print(post)
-#     print(post.dict())
-#     return {"post": f"data: {post}"}
-
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
-def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), user_id: int = Depends(oauth2.get_current_user)):
-    # print(post.published)
-    # print(post)
-    # print(post.dict())
-
-    # post_dict = post.dict()
-    # post_dict["id"] = randrange(0, 1000000)
-    # my_posts.append(post_dict)
-    # return {"post": f"data: {post_dict}"}
-
-    # print(post)
-    # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, (post.title, post.content, (post.published)))
-    # new_post = cursor.fetchone()
-    # conn.commit()
-    print(user_id)
-    print(post)
-    # new_post = models.Post(title=post.title, content=post.content, published=post.published)
-    new_post = models.Post(**post.model_dump())
-    db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
-    return new_post
 
 # #path parameter
 # @app.get("/posts/latest")
@@ -70,7 +45,7 @@ def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), user_i
 #             return p
 
 @router.get("/{id}", response_model= schemas.Post)
-def get_post(id: int, response: Response, db:Session = Depends(get_db)):
+def get_post(id: int, response: Response, db:Session = Depends(get_db), login_user: int = Depends(oauth2.get_current_user)):
     # print(id, type(id))
     # post = find_post(id)
     # if not post:
@@ -90,8 +65,45 @@ def find_index_post(id):
         if p["id"] == id:
             return i
 
+# @app.post("/createposts")
+# def create_posts(payload: dict = Body(...)):
+#     return {"post": f"title: {payload['title']} content: {payload['content']}" }
+
+# @app.post("/createposts")
+# def create_posts(post: schemes.Post):
+#     print(post.published)
+#     print(post)
+#     print(post.dict())
+#     return {"post": f"data: {post}"}
+
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), login_user: int = Depends(oauth2.get_current_user)):
+    # print(post.published)
+    # print(post)
+    # print(post.dict())
+
+    # post_dict = post.dict()
+    # post_dict["id"] = randrange(0, 1000000)
+    # my_posts.append(post_dict)
+    # return {"post": f"data: {post_dict}"}
+
+    # print(post)
+    # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, (post.title, post.content, (post.published)))
+    # new_post = cursor.fetchone()
+    # conn.commit()
+    
+    # get from schema.UserLogin 
+    print(login_user.email)
+    print(post)
+    # new_post = models.Post(title=post.title, content=post.content, published=post.published)
+    new_post = models.Post(owner_id=login_user.id, **post.model_dump())
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    return new_post
+
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int, db:Session = Depends(get_db)):
+def delete_post(id: int, db:Session = Depends(get_db), login_user: int = Depends(oauth2.get_current_user)):
     #deleting a post
     #find the index in the array that has required ID
     #my_posts.pop(index)
@@ -115,10 +127,14 @@ def delete_post(id: int, db:Session = Depends(get_db)):
 
     if post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} not found")
-    print(post)
+    # get from schema.UserLogin 
+    print(login_user.email)
+    if post.owner_id != login_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Not authorized to perform requested action")
+    print(post, post.title,post.content, post.published)
     
-    # post.delete(synchronize_session=False)
-    db.delete(post)
+    post_query.delete(synchronize_session=False)
+    # db.delete(post)
     db.commit()
 
     #no data is returned, only status code is returned
@@ -128,7 +144,7 @@ def delete_post(id: int, db:Session = Depends(get_db)):
 
 
 @router.put("/{id}", response_model= schemas.Post)
-def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db)):
+def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     # index = find_index_post(id)
     # if index == None:
     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} not found")
