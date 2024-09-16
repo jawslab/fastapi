@@ -37,10 +37,13 @@ def get_posts(db: Session = Depends(get_db), limit: int = 5, skip: int =0, searc
     return results
 
 #List typing for the return
-@router.get("/myposts", response_model= List[schemas.Post])
+@router.get("/myposts", response_model= List[schemas.PostOut])
 def get_posts(db: Session = Depends(get_db), login_user: int = Depends(oauth2.get_current_user)):
     # print(login_user.id)
-    posts = db.query(models.Post).filter(models.Post.owner_id==login_user.id).all()
+    # posts = db.query(models.Post).filter(models.Post.owner_id==login_user.id).all()
+    posts = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).\
+        join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).\
+        filter(models.Post.owner_id==login_user.id).all()
     if not posts:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     return posts
@@ -63,7 +66,7 @@ def get_posts(db: Session = Depends(get_db), login_user: int = Depends(oauth2.ge
 #         if p["id"] == id:
 #             return p
 
-@router.get("/{id}", response_model= schemas.Post)
+@router.get("/{id}", response_model= schemas.PostOut)
 def get_post(id: int, response: Response, db:Session = Depends(get_db), login_user: int = Depends(oauth2.get_current_user)):
     # print(id, type(id))
     # post = find_post(id)
@@ -74,7 +77,10 @@ def get_post(id: int, response: Response, db:Session = Depends(get_db), login_us
     # cursor.execute("""SELECT * FROM posts WHERE id = %s """, (str(id),))
     # post = cursor.fetchone()
 
-    post = db.query(models.Post).filter(models.Post.id == id).first()
+    post = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).\
+        join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).\
+        filter(models.Post.id == id).first()
+    # post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} not found")
     return post
