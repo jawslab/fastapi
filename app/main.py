@@ -19,6 +19,7 @@ app = FastAPI()
 origins = [
     "https://www.google.com",
     "http://localhost:8000",  # Add localhost for development
+    "*"
 ]
 
 app.add_middleware(

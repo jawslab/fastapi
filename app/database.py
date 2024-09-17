@@ -13,7 +13,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-
+print ("Database.py is using", SQLALCHEMY_DATABASE_URL)
 # Dependency
 def get_db():
     db = SessionLocal()
@@ -23,11 +23,11 @@ def get_db():
         db.close()
 
 
-import psycopg2
+# import psycopg2
 
-try:
-    conn = psycopg2.connect(host='localhost', dbname='fastapi', user='postgres', password='aQbvvgL1ekDasXJ0Ntwg')
-    cursor = conn.cursor()
-    print("Database connection was successful!")
-except Exception as error:
-    print("Error connecting to database: ", error)
+# try:
+#     conn = psycopg2.connect(host='localhost', dbname='fastapi', user='postgres', password='aQbvvgL1ekDasXJ0Ntwg')
+#     cursor = conn.cursor()
+#     print("Database connection was successful!")
+# except Exception as error:
+#     print("Error connecting to database: ", error)
