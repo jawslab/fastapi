@@ -36,6 +36,7 @@ print ("Testing Database.py is using", SQLALCHEMY_DATABASE_URL)
 # @pytest.fixture(scope="session")
 # @pytest.fixture(scope="module")
 def session():
+    print ("Testing Database.py is using", SQLALCHEMY_DATABASE_URL)
     print("my session fixture ran")
     #run DB session code before run test
     models.Base.metadata.drop_all(bind=engine)
