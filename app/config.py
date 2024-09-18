@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     database_password: str
     database_name: str
     database_username: str
-    # DATABASE_URL: str
+    DATABASE_URL: str
     SECRET_KEY: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
