@@ -1,57 +1,8 @@
-from fastapi.testclient import TestClient
-from app import models
-from app.main import app
+# from .database import client, session
+from app import models, schemas, config
 
-#copy from database.py
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from app.config import settings
-from app.database import get_db
-
+from jose import jwt, JWTError
 import pytest
-
-
-# (host='localhost', dbname='fastapi', user='postgres', password='aQbvvgL1ekDasXJ0Ntwg')
-SQLALCHEMY_DATABASE_URL = f'postgresql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}_test'
-# SQLALCHEMY_DATABASE_URL = "postgresql://postgres:aQbvvgL1ekDasXJ0Ntwg@localhost/fastapi_test"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# copy from main.py to allow models.py create a test database - {settings.database_name}_test
-# models.Base.metadata.drop_all(bind=engine)
-# models.Base.metadata.create_all(bind=engine)
-# end of copy from database.py
-
-print ("Testing Database.py is using", SQLALCHEMY_DATABASE_URL)
-
-
-@pytest.fixture
-def session():
-    #run DB session code before run test
-    models.Base.metadata.drop_all(bind=engine)
-    models.Base.metadata.create_all(bind=engine)
-    # Dependency
-    def override_get_db():
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    override_get_db
-
-# client = TestClient(app)
-@pytest.fixture
-def client(session):
-    #run Client code before
-    yield TestClient(app)
-    #run code after run test
-
 
 def test_root(client):
     response = client.get("/")
@@ -60,8 +11,41 @@ def test_root(client):
     assert response.json() == {"message": "welcome to my api -test for reload"}
 
 def test_create_user(client):
-    response = client.post("/users", json={"email": "test@example.com", "password": "testpassword"})
+    response = client.post("/users/", json={"email": "test@example.com", "password": "testpassword"})
     print(response.json())
     assert response.status_code == 201
     assert "id" in response.json()
     assert response.json()["email"] == "test@example.com"
+
+def test_get_user(client):
+    postresponse = client.post("/users/", json={"email": "test@example.com", "password": "testpassword"})
+    print("post", postresponse.json())
+    userid = postresponse.json()["id"]
+    response = client.get(f"/users/{userid}")
+    print("get", response.json())
+    assert response.status_code == 200
+    assert response.json()["email"] == "test@example.com"
+
+def test_login_user(test_user, client):
+    response = client.post("/login/", data={"username": test_user['email'], "password": test_user['password']})
+    print("login", response.json())
+    login_response = schemas.Token(**response.json())
+    payload = jwt.decode(login_response.access_token, config.settings.SECRET_KEY, algorithms=config.settings.ALGORITHM)
+    id = payload.get("user_id")
+    assert id == test_user["id"]
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+    assert response.json()["token_type"] == "bearer"
+
+@pytest.mark.parametrize("email, password, status_code", [
+    ('wrongemail@example.com', 'testpassword', 403),
+    ('test@example.com', 'wrongpassword', 403),
+     (None, 'wrongpassword', 403),
+    #  (None, 'wrongpassword', 422),
+])
+def test_login_user_fail(test_user, client, email, password, status_code):
+    response = client.post("/login/", data={"username": email, "password": password})
+    print("login", response.json())
+    assert response.status_code == status_code
+    assert "detail" in response.json()
+    # assert response.json()["detail"] == "Invalid Credentials"
