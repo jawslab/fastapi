@@ -29,7 +29,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 # models.Base.metadata.create_all(bind=engine)
 # end of copy from database.py
 
-print ("Testing Database.py is using", SQLALCHEMY_DATABASE_URL)
+print ("Testing Database.py is using", settings.database_hostname)
 
 #default is "function"
 @pytest.fixture(scope="function")
